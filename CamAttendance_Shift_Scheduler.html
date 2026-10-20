@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CamAttendance Shift Schedule Builder</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --surface:#ffffff; --text:#172b4d; --muted:#6b778c;
+    --border:#dfe1e6; --border-light:#ebecf0; --primary:#0052CC; --primary-dark:#0747a6;
+    --success:#36b37e; --success-bg:#e3fcef; --wo-bg:#fff0f0; --wo-text:#bf2600;
+    --danger:#de350b; --danger-bg:#ffebe6; --warn-bg:#fffae6;
+    --gs:#deebff; --ms:#e3fcef; --ss:#fffae6; --ns:#eae6ff;
+    --radius:8px; --radius-sm:4px;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    --mono:'SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);font-family:var(--font);color:var(--text);padding:18px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px;}
+  .panel{background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;}
+  .fld{display:flex;flex-direction:column;gap:4px;}
+  label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;}
+  select,input{font-family:var(--font);font-size:14px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);}
+  select:focus,input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,82,204,.15);}
+  button{font-family:var(--font);font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s ease;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-primary:disabled{background:#b3bac5;cursor:not-allowed;}
+  .btn-ghost{background:var(--surface);color:var(--primary);border:1px solid var(--border);}
+  .btn-ghost:hover{background:#f0f4ff;}
+  .btn-sm{padding:4px 9px;font-size:12px;}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:100px;border:1px solid var(--border);}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .toolbar .count{margin-left:auto;color:var(--muted);font-size:13px;}
+  .grid-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:60vh;}
+  table{border-collapse:separate;border-spacing:0;font-size:12px;width:max-content;min-width:100%;}
+  th,td{border-right:1px solid var(--border-light);border-bottom:1px solid var(--border-light);padding:0;white-space:nowrap;}
+  thead th{position:sticky;top:0;background:#f7f8fa;z-index:5;font-weight:600;padding:6px 8px;text-align:center;color:var(--muted);}
+  thead th .d{font-family:var(--mono);color:var(--text);font-size:12px;}
+  thead th .dow{font-size:10px;font-weight:500;}
+  thead th.wknd{background:#fdf3f0;}
+  .colEmp{position:sticky;left:0;z-index:4;background:#f7f8fa;text-align:left;min-width:220px;padding:8px 10px;}
+  td.colEmp{z-index:2;background:var(--surface);vertical-align:top;}
+  thead th.colEmp{z-index:6;}
+  .emp-name{font-weight:600;}
+  .emp-id{font-family:var(--mono);color:var(--muted);font-size:11px;margin-bottom:6px;}
+  .emp-ctrls{display:flex;flex-direction:column;gap:5px;margin-top:4px;}
+  .emp-ctrls .line{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+  .emp-ctrls select,.emp-ctrls input{font-size:11px;padding:3px 5px;}
+  .emp-ctrls .mini-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;min-width:34px;}
+  .emp-ctrls input[type=number]{width:42px;}
+  .emp-ctrls input[type=date]{width:116px;}
+  .emp-ctrls select.woSel{width:92px;}
+  .emp-ctrls select.shSel{width:84px;}
+  .btn-xs{padding:3px 7px;font-size:11px;}
+  td.cell{text-align:center;}
+  td.cell select{border:none;width:100%;min-width:92px;padding:6px 4px;background:transparent;border-radius:0;font-size:12px;text-align:center;text-align-last:center;cursor:pointer;}
+  td.cell select:focus{box-shadow:inset 0 0 0 2px var(--primary);}
+  td.cell.v-RME_GS{background:var(--gs);}
+  td.cell.v-RME_MS{background:var(--ms);}
+  td.cell.v-RME_SS{background:var(--ss);}
+  td.cell.v-RME_NS{background:var(--ns);}
+  td.cell.v-WO{background:var(--wo-bg);}
+  td.cell.v-WO select{color:var(--wo-text);font-weight:600;}
+  td.cell.violate{box-shadow:inset 0 0 0 2px var(--danger);background:var(--danger-bg)!important;}
+  tr.rowbad td.colEmp{background:var(--danger-bg);border-left:3px solid var(--danger);}
+  tr:hover td.colEmp{background:#f0f4ff;}
+  .empty{padding:40px;text-align:center;color:var(--muted);}
+  .note{font-size:12px;color:var(--muted);margin-top:6px;}
+  .pill{font-family:var(--mono);background:#eef1f5;padding:1px 6px;border-radius:4px;font-size:11px;}
+  .addrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .addrow input,.addrow select{min-width:130px;}
+  .dim{color:var(--muted);font-size:12px;}
+  details{border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:0 12px;}
+  summary{cursor:pointer;font-weight:600;font-size:13px;padding:10px 0;color:var(--primary);}
+  .ok{color:var(--success);font-size:12px;font-weight:600;}
+  .banner{border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px;font-size:13px;}
+  .banner.good{background:var(--success-bg);color:#064; border:1px solid #abf5d1;}
+  .banner.bad{background:var(--danger-bg);color:#7a1b0b;border:1px solid #ffbdad;}
+  .banner.bad ul{margin:6px 0 0;padding-left:18px;}
+  .banner.bad li{margin:2px 0;}
+  .flagbtn{background:none;border:none;color:var(--primary);cursor:pointer;text-decoration:underline;font-size:12px;padding:0;}
+
+  /* ===== mobile viewport meta handled in head; responsive styles ===== */
+  body.mobile{padding:10px 10px 86px;}
+  .mobile h1{font-size:18px;}
+  .mobile .panel{padding:12px;}
+  .mobile .row{gap:10px;}
+  .mobile .fld{flex:1 1 46%;}
+  .mobile select,.mobile input{font-size:16px;padding:10px;} /* 16px prevents iOS zoom */
+  .mobile .fld select,.mobile .fld input{width:100%;}
+  .mobile #buildBtn{flex:1 1 100%;padding:12px;}
+  /* hide the wide table on mobile, show cards */
+  .cards{display:none;}
+  .mobile .grid-wrap{display:none;}
+  .mobile .cards{display:block;}
+  .ecard{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;}
+  .ecard.bad{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger);}
+  .ecard .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;background:#f7f8fa;cursor:pointer;}
+  .ecard.bad .hd{background:var(--danger-bg);}
+  .ecard .hd .nm{font-weight:700;font-size:15px;}
+  .ecard .hd .meta{font-family:var(--mono);color:var(--muted);font-size:11px;}
+  .ecard .hd .caret{font-size:12px;color:var(--muted);}
+  .ecard .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px;}
+  .ecard .badge.ok{background:var(--success-bg);color:#064;}
+  .ecard .badge.err{background:#ffbdad;color:#7a1b0b;}
+  .ecard .body{padding:12px 14px;display:none;}
+  .ecard.open .body{display:block;}
+  .mctrls{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--border);}
+  .mctrls .mline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .mctrls .mline label{min-width:70px;}
+  .mctrls select,.mctrls input{flex:1;min-width:0;}
+  .mctrls .mline button{flex:0 0 auto;}
+  .mdays{display:flex;flex-direction:column;gap:6px;}
+  .mday{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--radius-sm);}
+  .mday.wknd{background:#fdf3f0;}
+  .mday.violate{box-shadow:inset 0 0 0 2px var(--danger);background:var(--danger-bg);}
+  .mday .dlab{flex:0 0 92px;font-family:var(--mono);font-size:13px;}
+  .mday .dlab .dw{color:var(--muted);font-size:11px;}
+  .mday select{flex:1;font-size:16px;padding:10px;border-radius:var(--radius-sm);}
+  .mday.v-RME_GS select{background:var(--gs);}
+  .mday.v-RME_MS select{background:var(--ms);}
+  .mday.v-RME_SS select{background:var(--ss);}
+  .mday.v-RME_NS select{background:var(--ns);}
+  .mday.v-WO select{background:var(--wo-bg);color:var(--wo-text);font-weight:700;}
+  .dlbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 14px;display:none;gap:10px;align-items:center;z-index:50;box-shadow:0 -2px 8px rgba(0,0,0,.06);}
+  .mobile .dlbar{display:flex;}
+  .dlbar button{flex:1;padding:14px;font-size:16px;}
+  .dlbar .st{flex:0 0 auto;font-size:12px;}
+  .mobile .toolbar .count{display:block;margin:0;}
+  .mobile #compBanner{position:sticky;top:0;z-index:40;}
+
+</style>
+</head>
+<body>
+<h1>CamAttendance — Shift Schedule Builder</h1>
+<p class="sub">Pick a site & period, set each person's shift and weekly off, then download the <span class="pill">SHIFT_SCHEDULER_IMPORT</span> Excel. Default period runs 26th of previous month → 25th of current month. A weekly off is mandatory on or before every 7th consecutive working day — violations are flagged and block download.</p>
+
+<div class="panel">
+  <div class="row">
+    <div class="fld">
+      <label>Site</label>
+      <select id="site"></select>
+    </div>
+    <div class="fld">
+      <label>Start date</label>
+      <input type="date" id="start">
+    </div>
+    <div class="fld">
+      <label>End date</label>
+      <input type="date" id="end">
+    </div>
+    <div class="fld">
+      <label>Quick period (26→25)</label>
+      <select id="period"></select>
+    </div>
+    <button class="btn-ghost" id="buildBtn">Build grid</button>
+  </div>
+  <div class="legend">
+    <span class="chip"><span class="sw" style="background:var(--gs)"></span>RME_GS · 09:00–18:00</span>
+    <span class="chip"><span class="sw" style="background:var(--ms)"></span>RME_MS · 06:00–15:00</span>
+    <span class="chip"><span class="sw" style="background:var(--ss)"></span>RME_SS · 12:00–21:00</span>
+    <span class="chip"><span class="sw" style="background:var(--ns)"></span>RME_NS · 21:00–06:00</span>
+    <span class="chip"><span class="sw" style="background:var(--wo-bg)"></span>WO · Weekly Off</span>
+  </div>
+</div>
+
+<div class="panel">
+  <details id="addPanel">
+    <summary>➕ Add a new employee</summary>
+    <div class="addrow" style="padding-bottom:12px;">
+      <div class="fld"><label>Employee ID</label><input id="newId" placeholder="e.g. A99001"></div>
+      <div class="fld"><label>Employee name</label><input id="newName" placeholder="Full name"></div>
+      <div class="fld"><label>Designation</label><input id="newDesig" placeholder="e.g. MST"></div>
+      <div class="fld"><label>Site</label><select id="newSite"></select></div>
+      <button class="btn-primary" id="addEmpBtn">Add employee</button>
+      <span id="addMsg" class="ok"></span>
+    </div>
+    <p class="dim" style="padding-bottom:10px;">New employees are saved in this browser and added to the selected site. They appear in the roster the next time you build the grid.</p>
+    <button class="btn-ghost btn-sm" id="resetEmps" style="margin-bottom:12px;">Reset to original list</button>
+  </details>
+</div>
+
+<div class="panel" id="editor" style="display:none;">
+  <div id="compBanner"></div>
+  <div class="toolbar">
+    <button class="btn-primary" id="downloadBtn">⬇ Download Excel for portal</button>
+    <span id="saveStatus" style="font-size:12px;color:var(--success);font-weight:600;opacity:.45;transition:opacity .3s;">Auto-saved</span>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="grid-wrap" id="gridWrap"></div>
+  <div class="cards" id="cards"></div>
+  <p class="note">Per employee: set a <b>Weekly off day</b> (auto-marks that weekday as WO across the period), or apply a <b>shift to a date range</b> (keeps that employee's WO days). <b>Carry-over</b> = consecutive days already worked just before the period starts. Red cells = a 7th working day with no weekly off — fix them to enable download. Sheet exports as <span class="pill">data</span> with <span class="pill">EMPID</span> + one column per date (yyyy/mm/dd).</p>
+</div>
+
+<div class="dlbar" id="dlbar">
+  <span class="st" id="dlbarSt"></span>
+  <span style="font-size:11px;color:var(--success);">●&nbsp;auto-saved</span>
+  <button class="btn-primary" id="downloadBtnMobile">⬇ Download Excel</button>
+</div>
+
+<div class="panel empty" id="emptyMsg">Select a site and period above, then click <b>Build grid</b>.</div>
+
+<script>
+const BASE_EMPLOYEES = [{"id": "749749", "name": "Rajoo .", "desig": "HOUSE KEEPING", "site": "DELH"}, {"id": "728224", "name": "Sunil Kumar", "desig": "HOUSE KEEPING", "site": "DELH"}, {"id": "745568", "name": "Munesh .", "desig": "HOUSE KEEPING", "site": "DELH"}, {"id": "771074", "name": "Pinki Devi", "desig": "HOUSE KEEPING LADY", "site": "DELH"}, {"id": "A10405", "name": "Sinku Kumari", "desig": "HOUSE KEEPING LADY", "site": "DELH"}, {"id": "738085", "name": "Tejveer Singh", "desig": "MST", "site": "DELH"}, {"id": "A57172", "name": "Ajay Kumar", "desig": "HOUSE KEEPING NEW", "site": "DELH"}, {"id": "737785", "name": "Madhav .", "desig": "HOUSE KEEPING BOY", "site": "NCTG"}, {"id": "732853", "name": "VIKKI .", "desig": "HOUSE KEEPING BOY", "site": "NCTG"}, {"id": "752963", "name": "Sandeep .", "desig": "MST", "site": "NCTG"}, {"id": "752451", "name": "Kiran .", "desig": "HOUSE KEEPING LADY", "site": "NCTG"}, {"id": "760905", "name": "Pradeep Kumar", "desig": "MST", "site": "NCTG"}, {"id": "737378", "name": "Mahesh Kumar", "desig": "HOUSE KEEPING", "site": "NCTG"}, {"id": "785190", "name": "Sandip Kumar", "desig": "HOUSE KEEPING BOY", "site": "NCTG"}, {"id": "784944", "name": "Anitesh Nagar", "desig": "SUPERVISOR", "site": "NCTG"}, {"id": "782900", "name": "Ram Narayan", "desig": "HOUSE KEEPING BOY", "site": "NCTG"}, {"id": "754985", "name": "Raja Khan", "desig": "HOUSE KEEPING BOY", "site": "NCTG"}, {"id": "A32293", "name": "Diwakar Kumar", "desig": "MST", "site": "NCTG"}, {"id": "750134", "name": "Raju Raut", "desig": "HOUSE KEEPING BOY", "site": "DLIH"}, {"id": "0763530", "name": "Shish Pal", "desig": "HOUSE KEEPING BOY", "site": "DLIH"}, {"id": "0765737", "name": "Laloo Prasad Yadav", "desig": "MST", "site": "DLIH"}, {"id": "0756116", "name": "Mukesh Kumar", "desig": "HOUSE KEEPING", "site": "DLIH"}, {"id": "771149", "name": "Dharmendra Singh", "desig": "HOUSE KEEPING BOY", "site": "DLIH"}, {"id": "A130514", "name": "Jaibeer Singh", "desig": "HOUSE KEEPING BOY", "site": "DLIH"}, {"id": "A65763", "name": "Reena Devi", "desig": "HOUSE KEEPING LADY", "site": "DLIH"}, {"id": "769059", "name": "Ritesh Yadav", "desig": "PLUMBER", "site": "DLIH"}, {"id": "A37217", "name": "Puja Sharma", "desig": "HOUSE KEEPING LADY", "site": "DLIH"}, {"id": "A34217", "name": "Puja .", "desig": "HOUSE KEEPING LADY", "site": "DLIH"}, {"id": "737050", "name": "Shiv Rattan", "desig": "ELECTRICIAN", "site": "FADA"}, {"id": "745866", "name": "Shivam Rathore", "desig": "MST", "site": "FADA"}, {"id": "temp0001", "name": "Deepak Deepak", "desig": "HOUSE KEEPING", "site": "FADA"}, {"id": "034518", "name": "Raja Raja", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A02207", "name": "Vikram Singh", "desig": "MST", "site": "FADA"}, {"id": "A04787", "name": "VIKAS Kumar", "desig": "HOUSE KEEPING SUPERVISOR", "site": "FADA"}, {"id": "424767", "name": "Aniket Aniket", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A06434", "name": "Sonu Kumar", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A06350", "name": "Gopal Kumar", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A16542", "name": "Abhishek Abhishek", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A17959", "name": "Vimlesh Vimlesh", "desig": "HOUSE KEEPING LADY", "site": "FADA"}, {"id": "A16500", "name": "Abhishek Abhishek", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A20983", "name": "Naveen Singh", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "A62568", "name": "Ravi Kumar", "desig": "HOUSE KEEPING BOY", "site": "FADA"}, {"id": "727848", "name": "AKASH BALMEEK", "desig": "HOUSE KEEPING SUPERVISOR", "site": "NCT2"}, {"id": "746548", "name": "ANIL KUMAR", "desig": "MST", "site": "NCT2"}, {"id": "727840", "name": "BALVEER BALMEEK", "desig": "HOUSE KEEPING", "site": "NCT2"}, {"id": "728427", "name": "DIXIT BALMIK", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "753123", "name": "Himanshu Singh", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "759531", "name": "Sushil .", "desig": "MST", "site": "NCT2"}, {"id": "759873", "name": "ARJINA KHATUN", "desig": "HOUSE KEEPING LADY", "site": "NCT2"}, {"id": "760336", "name": "Govind Kumar", "desig": "HOUSE KEEPING SUPERVISOR", "site": "NCT2"}, {"id": "767823", "name": "Jagannath . Singh", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "769366", "name": "Arvind Kumar", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A31095", "name": "Sunil Kumar", "desig": "HOUSE KEEPING SUPERVISOR", "site": "NCT2"}, {"id": "A42646", "name": "Aarti .", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A55375", "name": "Vijay Kumar", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A60055", "name": "Netrapal .", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A65295", "name": "Amit Kumar", "desig": "HOUSE KEEPING SUPERVISOR", "site": "NCT2"}, {"id": "786491", "name": "Chandan Kumar", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A74163", "name": "KARAN .", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A74162", "name": "RAVI kumar Pathre", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "A74234", "name": "Dharm Vir", "desig": "HOUSE KEEPING BOY", "site": "NCT2"}, {"id": "746970", "name": "Sunil .", "desig": "MST", "site": "NCT2"}, {"id": "749734", "name": "Basudeb Patra", "desig": "HOUSE KEEPING", "site": "NZMN"}, {"id": "750881", "name": "Rajni Devi", "desig": "HOUSE KEEPING LADY", "site": "NZMN"}, {"id": "737787", "name": "Arjun Sah", "desig": "MST", "site": "NZMN"}, {"id": "755098", "name": "Jitram Oroan", "desig": "HOUSE KEEPING BOY", "site": "NZMN"}, {"id": "766346", "name": "Prashant .", "desig": "MST", "site": "NZMN"}, {"id": "A02056", "name": "Vinnu .", "desig": "HOUSE KEEPING BOY", "site": "NZMN"}, {"id": "A23302", "name": "Vishwajeet Kumar", "desig": "Janitor", "site": "NZMN"}, {"id": "A42639", "name": "Adwaitay Mandal", "desig": "HOUSE KEEPING BOY", "site": "NZMN"}, {"id": "A56080", "name": "Parimal Basak", "desig": "HOUSE KEEPING BOY", "site": "NZMN"}, {"id": "A60056", "name": "Ajeet Kumar", "desig": "HOUSE KEEPING", "site": "NZMN"}, {"id": "787393", "name": "Vikash Kumar", "desig": "HOUSE KEEPING SUPERVISOR", "site": "NZMN"}, {"id": "A74921", "name": "Sonu Balmik", "desig": "HOUSE KEEPING BOY", "site": "NZMN"}];
+const LS_KEY = "cam_shift_extra_emps_v1";
+const MAX_WORK_STREAK = 6; // WO must come on/before the 7th day
+const SHIFT_OPTS = [
+  {v:"RME_GS",t:"RME_GS"},{v:"RME_MS",t:"RME_MS"},{v:"RME_SS",t:"RME_SS"},
+  {v:"RME_NS",t:"RME_NS"},{v:"WO",t:"WO"},{v:"",t:"—"}
+];
+const WORK_SHIFTS=["RME_GS","RME_MS","RME_SS","RME_NS"];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+let _hasLS=true; try{ localStorage.getItem(""); }catch(e){ _hasLS=false; }
+let _memExtras=[];
+function loadExtras(){ if(!_hasLS) return _memExtras.slice(); try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(e){ return _memExtras.slice(); } }
+function saveExtras(a){ _memExtras=a.slice(); if(!_hasLS) return; try{ localStorage.setItem(LS_KEY, JSON.stringify(a)); }catch(e){} }
+function allEmployees(){ return BASE_EMPLOYEES.concat(loadExtras()); }
+
+// ---- auto-save roster state (per site+period) ----
+const LS_ROSTER = "cam_shift_roster_v1";   // {"<SITE>|<start>|<end>": {data:{}, carry:{}}}
+const LS_LAST   = "cam_shift_last_v1";      // {site, start, end}
+function _lsGet(k){ if(!_hasLS) return (window._mem&&window._mem[k])||null; try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch(e){ return (window._mem&&window._mem[k])||null; } }
+function _lsSet(k,v){ window._mem=window._mem||{}; window._mem[k]=v; if(!_hasLS) return; try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function rosterKey(site,s,e){ return site+"|"+s+"|"+e; }
+let _saveT;
+function autoSave(){
+  if(!state.site || !state.dates.length) return;
+  const s=iso(state.dates[0]), e=iso(state.dates[state.dates.length-1]);
+  const all=_lsGet(LS_ROSTER)||{};
+  all[rosterKey(state.site,s,e)]={data:state.data, carry:state.carry};
+  _lsSet(LS_ROSTER, all);
+  _lsSet(LS_LAST, {site:state.site, start:s, end:e});
+  const el=document.getElementById('saveStatus'); if(el){ el.textContent="✓ Saved"; el.style.opacity="1"; clearTimeout(_saveT); _saveT=setTimeout(()=>{el.style.opacity="0.45"; el.textContent="Auto-saved";},1200); }
+}
+function loadRoster(site,s,e){ const all=_lsGet(LS_ROSTER)||{}; return all[rosterKey(site,s,e)]||null; }
+
+let state = { dates: [], site: null, data: {}, carry: {} }; // data[id][i]=shift; carry[id]=int
+
+function iso(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return y+"-"+m+"-"+dd; }
+function fmtDate(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return y+"/"+m+"/"+dd; }
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// ---- site dropdowns ----
+function refreshSiteDropdowns(){
+  const sites=[...new Set(allEmployees().map(e=>e.site))].sort();
+  [['site',true],['newSite',false]].forEach(([id,showCount])=>{
+    const sel=document.getElementById(id); const prev=sel.value; sel.innerHTML='';
+    sites.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent= showCount ? (s+" ("+allEmployees().filter(e=>e.site===s).length+")") : s; sel.appendChild(o); });
+    if([...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  });
+}
+
+// ---- period ----
+function periodBounds(y,m){ return {start:new Date(y,m-1,26), end:new Date(y,m,25)}; }
+function currentAnchor(){ const t=new Date(); let m=t.getMonth(),y=t.getFullYear(); if(t.getDate()>25){ m+=1; if(m>11){m=0;y+=1;} } return {y,m}; }
+function populatePeriods(){
+  const sel=document.getElementById('period'); sel.innerHTML=''; const a=currentAnchor();
+  for(let off=-3; off<=2; off++){
+    let m=a.m+off,y=a.y; while(m<0){m+=12;y-=1;} while(m>11){m-=12;y+=1;}
+    const {start,end}=periodBounds(y,m);
+    const mn=new Intl.DateTimeFormat('en',{month:'short'}).format(end);
+    const o=document.createElement('option'); o.value=iso(start)+"|"+iso(end); o.textContent=fmtDate(start)+" → "+fmtDate(end)+"  ("+mn+" cycle)";
+    if(off===0) o.selected=true; sel.appendChild(o);
+  }
+  applyPeriod();
+}
+function applyPeriod(){ const v=document.getElementById('period').value; if(!v) return; const [s,e]=v.split('|'); document.getElementById('start').value=s; document.getElementById('end').value=e; }
+document.getElementById('period').addEventListener('change', applyPeriod);
+
+function buildDateList(s,e){ const out=[]; let d=new Date(s+'T00:00:00'); const end=new Date(e+'T00:00:00'); while(d<=end){ out.push(new Date(d)); d.setDate(d.getDate()+1);} return out; }
+
+document.getElementById('buildBtn').addEventListener('click', build);
+function build(){
+  const s=document.getElementById('start').value, e=document.getElementById('end').value;
+  if(!s||!e){ alert('Pick start and end dates.'); return; }
+  if(e<s){ alert('End date must be on/after start date.'); return; }
+  const dates=buildDateList(s,e);
+  if(dates.length>62){ if(!confirm(dates.length+' days is a lot of columns. Continue?')) return; }
+  state.site=document.getElementById('site').value; state.dates=dates;
+  const prev=state.data, prevCarry=state.carry;
+  const saved=loadRoster(state.site, s, e);  // auto-saved roster for this site+period
+  const sd=(saved&&saved.data)||{}, sc=(saved&&saved.carry)||{};
+  state.data={}; state.carry={};
+  allEmployees().filter(x=>x.site===state.site).forEach(emp=>{
+    if(Array.isArray(sd[emp.id]) && sd[emp.id].length===dates.length){
+      state.data[emp.id]=sd[emp.id].slice();
+    } else {
+      state.data[emp.id]=dates.map((d,i)=>(prev[emp.id]&&prev[emp.id][i]!=null)?prev[emp.id][i]:"");
+    }
+    state.carry[emp.id]=(sc[emp.id]!=null)?sc[emp.id]:((prevCarry[emp.id]!=null)?prevCarry[emp.id]:0);
+  });
+  render();
+}
+
+// ---- compliance engine: returns {id: [violatingIndices...]} ----
+function computeViolations(){
+  const res={}; const emps=allEmployees().filter(x=>x.site===state.site);
+  emps.forEach(emp=>{
+    const seq=state.data[emp.id]||[]; const bad=[];
+    let streak = Math.max(0, parseInt(state.carry[emp.id]||0,10)||0); // carry-over working days
+    for(let i=0;i<seq.length;i++){
+      const v=seq[i];
+      if(v==="WO"){ streak=0; }
+      else if(WORK_SHIFTS.includes(v)){ streak++; if(streak>MAX_WORK_STREAK) bad.push(i); }
+      else { /* blank: unscheduled — treat as not resetting, but don't count as work. We flag separately below. */ }
+    }
+    res[emp.id]=bad;
+  });
+  return res;
+}
+function hasBlanks(empId){ return (state.data[empId]||[]).some(v=>v===""); }
+
+function render(){
+  document.getElementById('emptyMsg').style.display='none';
+  document.getElementById('editor').style.display='block';
+  const emps=allEmployees().filter(x=>x.site===state.site);
+  document.getElementById('count').textContent = emps.length+" employees · "+state.dates.length+" days";
+
+  const viol=computeViolations();
+
+  let html='<table><thead><tr><th class="colEmp">Employee &amp; controls</th>';
+  state.dates.forEach(d=>{ const wk=(d.getDay()===0||d.getDay()===6); html+='<th class="'+(wk?'wknd':'')+'"><div class="d">'+fmtDate(d).slice(5)+'</div><div class="dow">'+DOW[d.getDay()]+'</div></th>'; });
+  html+='</tr></thead><tbody>';
+
+  emps.forEach(emp=>{
+    const bad=viol[emp.id]||[];
+    const rowBad = bad.length>0;
+    html+='<tr class="'+(rowBad?'rowbad':'')+'">';
+    // control cell
+    html+='<td class="colEmp"><div class="emp-name">'+esc(emp.name)+'</div><div class="emp-id">'+esc(emp.id)+' · '+esc(emp.desig||'')+'</div>';
+    html+='<div class="emp-ctrls" data-emp="'+esc(emp.id)+'">';
+    // weekly off day
+    html+='<div class="line"><span class="mini-lbl">W.off</span><select class="woSel"><option value="">— day —</option>';
+    DOW.forEach((n,idx)=>{ html+='<option value="'+idx+'">'+n+'</option>'; });
+    html+='</select><button class="btn-ghost btn-xs setWo">Set WO</button></div>';
+    // shift applicator
+    html+='<div class="line"><span class="mini-lbl">Shift</span><select class="shSel">';
+    WORK_SHIFTS.forEach(sh=>{ html+='<option value="'+sh+'">'+sh+'</option>'; });
+    html+='</select></div>';
+    html+='<div class="line"><input type="date" class="shFrom" min="'+iso(state.dates[0])+'" max="'+iso(state.dates[state.dates.length-1])+'" value="'+iso(state.dates[0])+'"><input type="date" class="shTo" min="'+iso(state.dates[0])+'" max="'+iso(state.dates[state.dates.length-1])+'" value="'+iso(state.dates[state.dates.length-1])+'"><button class="btn-ghost btn-xs applySh">Apply</button></div>';
+    // carry-over
+    html+='<div class="line"><span class="mini-lbl" title="Consecutive days already worked just before the period start">Carry</span><input type="number" class="carry" min="0" max="6" value="'+(state.carry[emp.id]||0)+'"><span class="dim">days worked before</span></div>';
+    html+='</div></td>';
+    // day cells
+    state.dates.forEach((d,i)=>{
+      const val=(state.data[emp.id]&&state.data[emp.id][i])||"";
+      const isBad=bad.includes(i);
+      html+='<td class="cell v-'+val+(isBad?' violate':'')+'" data-emp="'+esc(emp.id)+'" data-i="'+i+'"'+(isBad?' title="7th+ consecutive working day — weekly off required"':'')+'><select>';
+      SHIFT_OPTS.forEach(o=>{ html+='<option value="'+o.v+'"'+(o.v===val?' selected':'')+'>'+o.t+'</option>'; });
+      html+='</select></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('gridWrap').innerHTML=html;
+
+  wireRow();
+  renderCards(viol);
+  renderCompliance(viol);
+  autoSave();
+}
+
+// ---- mobile card renderer ----
+let _openCards = {};
+function renderCards(viol){
+  const emps=allEmployees().filter(x=>x.site===state.site);
+  let h='';
+  emps.forEach(emp=>{
+    const bad=viol[emp.id]||[];
+    const isOpen=!!_openCards[emp.id];
+    h+='<div class="ecard'+(bad.length?' bad':'')+(isOpen?' open':'')+'" data-emp="'+esc(emp.id)+'">';
+    h+='<div class="hd cardtog"><div><div class="nm">'+esc(emp.name)+'</div><div class="meta">'+esc(emp.id)+' · '+esc(emp.desig||'')+'</div></div>';
+    h+='<div style="display:flex;gap:8px;align-items:center;">'+(bad.length?'<span class="badge err">'+bad.length+' flag'+(bad.length>1?'s':'')+'</span>':'<span class="badge ok">OK</span>')+'<span class="caret">'+(isOpen?'▲':'▼')+'</span></div></div>';
+    h+='<div class="body">';
+    // controls
+    h+='<div class="mctrls" data-emp="'+esc(emp.id)+'">';
+    h+='<div class="mline"><label>Weekly off</label><select class="woSel"><option value="">— day —</option>';
+    DOW.forEach((n,idx)=>{ h+='<option value="'+idx+'">'+n+'</option>'; });
+    h+='</select><button class="btn-ghost btn-sm setWo">Set WO</button></div>';
+    h+='<div class="mline"><label>Shift</label><select class="shSel">';
+    WORK_SHIFTS.forEach(sh=>{ h+='<option value="'+sh+'">'+sh+'</option>'; });
+    h+='</select></div>';
+    h+='<div class="mline"><label>From–To</label><input type="date" class="shFrom" min="'+iso(state.dates[0])+'" max="'+iso(state.dates[state.dates.length-1])+'" value="'+iso(state.dates[0])+'"><input type="date" class="shTo" min="'+iso(state.dates[0])+'" max="'+iso(state.dates[state.dates.length-1])+'" value="'+iso(state.dates[state.dates.length-1])+'"><button class="btn-ghost btn-sm applySh">Apply</button></div>';
+    h+='<div class="mline"><label>Carry-over</label><input type="number" class="carry" min="0" max="6" value="'+(state.carry[emp.id]||0)+'"><span class="dim">days worked before start</span></div>';
+    h+='</div>';
+    // day list
+    h+='<div class="mdays">';
+    state.dates.forEach((d,i)=>{
+      const val=(state.data[emp.id]&&state.data[emp.id][i])||"";
+      const wk=(d.getDay()===0||d.getDay()===6), isBad=bad.includes(i);
+      h+='<div class="mday v-'+val+(wk?' wknd':'')+(isBad?' violate':'')+'" data-emp="'+esc(emp.id)+'" data-i="'+i+'">';
+      h+='<span class="dlab">'+fmtDate(d).slice(5)+' <span class="dw">'+DOW[d.getDay()]+'</span></span><select>';
+      SHIFT_OPTS.forEach(o=>{ h+='<option value="'+o.v+'"'+(o.v===val?' selected':'')+'>'+(o.v||'—')+'</option>'; });
+      h+='</select></div>';
+    });
+    h+='</div></div></div>';
+  });
+  document.getElementById('cards').innerHTML=h;
+  wireCards();
+}
+function wireCards(){
+  document.querySelectorAll('.ecard .cardtog').forEach(hd=>{
+    hd.addEventListener('click',e=>{ const card=hd.closest('.ecard'); const emp=card.dataset.emp; _openCards[emp]=!_openCards[emp]; card.classList.toggle('open'); const c=hd.querySelector('.caret'); if(c)c.textContent=_openCards[emp]?'▲':'▼'; });
+  });
+  document.querySelectorAll('.mday select').forEach(sel=>{
+    sel.addEventListener('change',ev=>{ const row=ev.target.closest('.mday'); state.data[row.dataset.emp][+row.dataset.i]=ev.target.value; render(); });
+  });
+  document.querySelectorAll('.mctrls').forEach(box=>{
+    const emp=box.dataset.emp;
+    box.querySelector('.setWo').addEventListener('click',()=>{ const day=box.querySelector('.woSel').value; if(day===""){alert('Pick a weekly-off weekday first.');return;} const dn=+day; state.dates.forEach((d,i)=>{ if(d.getDay()===dn) state.data[emp][i]="WO"; }); render(); });
+    box.querySelector('.applySh').addEventListener('click',()=>{ const sh=box.querySelector('.shSel').value, from=box.querySelector('.shFrom').value, to=box.querySelector('.shTo').value; if(from>to){alert('From date must be on/before To date.');return;} state.dates.forEach((d,i)=>{ const ds=iso(d); if(ds>=from&&ds<=to&&state.data[emp][i]!=="WO") state.data[emp][i]=sh; }); render(); });
+    box.querySelector('.carry').addEventListener('change',ev=>{ state.carry[emp]=Math.max(0,Math.min(6,parseInt(ev.target.value||0,10)||0)); render(); });
+  });
+}
+
+function wireRow(){
+  // cell dropdowns
+  document.querySelectorAll('td.cell select').forEach(sel=>{
+    sel.addEventListener('change', ev=>{ const td=ev.target.closest('td'); state.data[td.dataset.emp][+td.dataset.i]=ev.target.value; render(); });
+  });
+  // per-employee controls
+  document.querySelectorAll('.emp-ctrls').forEach(box=>{
+    const emp=box.dataset.emp;
+    box.querySelector('.setWo').addEventListener('click',()=>{
+      const day=box.querySelector('.woSel').value;
+      if(day===""){ alert('Pick a weekly-off weekday first.'); return; }
+      const dn=+day;
+      state.dates.forEach((d,i)=>{ if(d.getDay()===dn) state.data[emp][i]="WO"; });
+      render();
+    });
+    box.querySelector('.applySh').addEventListener('click',()=>{
+      const sh=box.querySelector('.shSel').value;
+      const from=box.querySelector('.shFrom').value, to=box.querySelector('.shTo').value;
+      if(from>to){ alert('From date must be on/before To date.'); return; }
+      state.dates.forEach((d,i)=>{ const ds=iso(d); if(ds>=from && ds<=to && state.data[emp][i]!=="WO") state.data[emp][i]=sh; });
+      render();
+    });
+    box.querySelector('.carry').addEventListener('change',ev=>{ state.carry[emp]=Math.max(0,Math.min(6,parseInt(ev.target.value||0,10)||0)); render(); });
+  });
+}
+
+function renderCompliance(viol){
+  const emps=allEmployees().filter(x=>x.site===state.site);
+  const offenders=emps.filter(e=>(viol[e.id]||[]).length>0);
+  const blanks=emps.filter(e=>hasBlanks(e.id));
+  const banner=document.getElementById('compBanner');
+  const dl=document.getElementById('downloadBtn');
+  if(offenders.length===0 && blanks.length===0){
+    banner.className='banner good'; banner.innerHTML='✓ Roster is compliant — every employee gets a weekly off on or before the 7th consecutive working day, and all days are scheduled.';
+    dl.disabled=false; syncMobileDl(true,0); return;
+  }
+  let h='<div class="banner bad"><b>⚠ Roster not compliant — download is blocked.</b><ul>';
+  offenders.forEach(e=>{ const days=(viol[e.id]||[]).map(i=>fmtDate(state.dates[i]).slice(5)).join(', '); h+='<li><button class="flagbtn" data-emp="'+esc(e.id)+'">'+esc(e.name)+' ('+esc(e.id)+')</button> — works 7+ days with no weekly off. Flagged dates: '+days+'</li>'; });
+  if(blanks.length){ h+='<li>'+blanks.length+' employee(s) have unscheduled (blank) days: '+blanks.map(e=>esc(e.name)).join(', ')+'. Fill or mark WO before export.</li>'; }
+  h+='</ul></div>';
+  banner.innerHTML=h; banner.className='';
+  dl.disabled=true; syncMobileDl(false, offenders.length+blanks.length);
+  banner.querySelectorAll('.flagbtn').forEach(b=>b.addEventListener('click',()=>{
+    const first=document.querySelector('td.cell.violate[data-emp="'+b.dataset.emp.replace(/"/g,'')+'"]');
+    if(first) first.scrollIntoView({behavior:'smooth',inline:'center',block:'center'});
+  }));
+}
+
+// ---- add employee ----
+document.getElementById('addEmpBtn').addEventListener('click',()=>{
+  const id=document.getElementById('newId').value.trim(), name=document.getElementById('newName').value.trim();
+  const desig=document.getElementById('newDesig').value.trim(), site=document.getElementById('newSite').value;
+  if(!id||!name){ alert('Employee ID and name are required.'); return; }
+  if(allEmployees().some(e=>e.id===id && e.site===site)){ alert('An employee with this ID already exists at '+site+'.'); return; }
+  const extras=loadExtras(); extras.push({id,name,desig:desig||'',site}); saveExtras(extras);
+  document.getElementById('newId').value=''; document.getElementById('newName').value=''; document.getElementById('newDesig').value='';
+  refreshSiteDropdowns();
+  const msg=document.getElementById('addMsg'); msg.textContent='✓ Added '+name+' to '+site; setTimeout(()=>msg.textContent='',3500);
+  if(state.site===site){ state.data[id]=state.dates.map(()=> ""); state.carry[id]=0; render(); }
+});
+document.getElementById('resetEmps').addEventListener('click',()=>{ if(confirm('Remove all employees you added and keep only the original list?')){ saveExtras([]); refreshSiteDropdowns(); if(state.site) build(); } });
+
+// ---- Excel writer (self-contained, no external library) ----
+function crc32(bytes){ let c,crc=0xFFFFFFFF; if(!crc32.T){ crc32.T=[]; for(let n=0;n<256;n++){ c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; crc32.T[n]=c>>>0; } } for(let i=0;i<bytes.length;i++) crc=(crc>>>8)^crc32.T[(crc^bytes[i])&0xFF]; return (crc^0xFFFFFFFF)>>>0; }
+function strBytes(s){ return new TextEncoder().encode(s); }
+function makeZip(files){
+  const chunks=[],central=[]; let offset=0;
+  const u16=n=>[n&0xFF,(n>>8)&0xFF], u32=n=>[n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>>24)&0xFF];
+  files.forEach(f=>{
+    const name=strBytes(f.name),data=f.data,crc=crc32(data);
+    const local=[].concat([0x50,0x4b,0x03,0x04],u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0));
+    const la=new Uint8Array(local.length+name.length+data.length); la.set(local,0); la.set(name,local.length); la.set(data,local.length+name.length); chunks.push(la);
+    const cen=[].concat([0x50,0x4b,0x01,0x02],u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset));
+    const ca=new Uint8Array(cen.length+name.length); ca.set(cen,0); ca.set(name,cen.length); central.push(ca); offset+=la.length;
+  });
+  let cenSize=0; central.forEach(c=>cenSize+=c.length);
+  const end=[].concat([0x50,0x4b,0x05,0x06],u16(0),u16(0),u16(files.length),u16(files.length),u32(cenSize),u32(offset),u16(0));
+  const out=new Uint8Array(offset+cenSize+end.length); let pos=0;
+  chunks.forEach(c=>{out.set(c,pos);pos+=c.length;}); central.forEach(c=>{out.set(c,pos);pos+=c.length;}); out.set(new Uint8Array(end),pos);
+  return out;
+}
+function xmlEsc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function colLetter(n){ let s=""; n++; while(n>0){ let m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+function excelSerial(d){ const base=Date.UTC(1899,11,30), utc=Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()); return Math.round((utc-base)/86400000); }
+function buildXlsx(headerDates, rows){
+  const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy/mm/dd"/></numFmts><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>';
+  let sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  sheet+='<row r="1"><c r="A1" t="inlineStr"><is><t>EMPID</t></is></c>';
+  headerDates.forEach((d,idx)=>{ sheet+='<c r="'+colLetter(idx+1)+'1" s="1"><v>'+excelSerial(d)+'</v></c>'; });
+  sheet+='</row>';
+  rows.forEach((row,ri)=>{ const r=ri+2; sheet+='<row r="'+r+'">'; sheet+='<c r="A'+r+'" t="inlineStr"><is><t>'+xmlEsc(row[0])+'</t></is></c>';
+    for(let ci=1;ci<row.length;ci++){ const v=row[ci]; if(v!==""&&v!=null){ sheet+='<c r="'+colLetter(ci)+r+'" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>'; } }
+    sheet+='</row>'; });
+  sheet+='</sheetData></worksheet>';
+  const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+  const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="data" sheetId="1" r:id="rId1"/></sheets></workbook>';
+  const wbRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+  return makeZip([
+    {name:"[Content_Types].xml",data:strBytes(ct)},
+    {name:"_rels/.rels",data:strBytes(rels)},
+    {name:"xl/workbook.xml",data:strBytes(wb)},
+    {name:"xl/_rels/workbook.xml.rels",data:strBytes(wbRels)},
+    {name:"xl/styles.xml",data:strBytes(styles)},
+    {name:"xl/worksheets/sheet1.xml",data:strBytes(sheet)},
+  ]);
+}
+
+document.getElementById('downloadBtn').addEventListener('click',()=>{
+  if(document.getElementById('downloadBtn').disabled) return;
+  const emps=allEmployees().filter(x=>x.site===state.site);
+  const rows=emps.map(emp=>[emp.id, ...state.data[emp.id].map(v=>v||"")]);
+  const bytes=buildXlsx(state.dates, rows);
+  const blob=new Blob([bytes],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const sd=fmtDate(state.dates[0]).replace(/\//g,''), ed=fmtDate(state.dates[state.dates.length-1]).replace(/\//g,'');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="SHIFT_SCHEDULER_IMPORT_"+state.site+"_"+sd+"_"+ed+".xlsx";
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},100);
+});
+
+// ---- mobile helpers ----
+function isMobile(){ return window.matchMedia('(max-width: 760px)').matches; }
+function applyMode(){ document.body.classList.toggle('mobile', isMobile()); }
+function syncMobileDl(ok, n){
+  const b=document.getElementById('downloadBtnMobile'), st=document.getElementById('dlbarSt');
+  if(!b) return; b.disabled=!ok;
+  st.textContent = ok ? '✓ Compliant' : ('⚠ '+n+' to fix'); st.style.color = ok ? 'var(--success)' : 'var(--danger)';
+}
+document.getElementById('downloadBtnMobile').addEventListener('click',()=>{ const d=document.getElementById('downloadBtn'); if(!d.disabled) d.click(); });
+let _rt; window.addEventListener('resize',()=>{ clearTimeout(_rt); _rt=setTimeout(applyMode,150); });
+applyMode();
+
+// ---- init ----
+refreshSiteDropdowns();
+populatePeriods();
+// restore last-used site & period if available
+(function restoreLast(){
+  const last=_lsGet(LS_LAST);
+  if(last){
+    const siteSel=document.getElementById('site');
+    if([...siteSel.options].some(o=>o.value===last.site)) siteSel.value=last.site;
+    // match a period option, else set manual dates
+    const perSel=document.getElementById('period');
+    const match=[...perSel.options].find(o=>o.value===(last.start+"|"+last.end));
+    if(match){ perSel.value=match.value; applyPeriod(); }
+    else { document.getElementById('start').value=last.start; document.getElementById('end').value=last.end; }
+  }
+})();
+build();
+// persist on background / tab hide (mobile sleep, app switch)
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) autoSave(); });
+window.addEventListener('pagehide', autoSave);
+window.addEventListener('beforeunload', autoSave);
+</script>
+</body>
+</html>
